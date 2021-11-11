@@ -1,0 +1,61 @@
+import { useEffect, useState } from "react"
+import { Key as KeyLabel } from "../../domain/keyboard"
+
+type IsPressed = boolean 
+type EventCode = string 
+type CallbackFunction = () => void 
+
+type Settings = {
+    watchKey: KeyLabel 
+    onStartPress: CallbackFunction
+    onFinishPress: CallbackFunction
+}
+
+export function usePressObserver({
+    watchKey,
+    onStartPress,
+    onFinishPress
+}: Settings): IsPressed {
+    const [pressed, setPressed] = useState<IsPressed>(false)
+
+    useEffect(() => {
+        function handlePressStart({ code }: KeyboardEvent): void {
+            // check key is not already pressed or if it is not the target key 
+            if (pressed || !equal(watchKey, code)){ 
+                return 
+            }
+            setPressed(true)
+            onStartPress()
+        }
+
+        function handlePressFinish({ code }: KeyboardEvent): void {
+            setPressed(false)
+            onFinishPress()
+        }
+        
+        document.addEventListener("keydown", handlePressStart)
+        document.addEventListener("keyup", handlePressFinish)
+
+        // useEffect cleanup function
+        return () => {
+            document.removeEventListener("keydown", handlePressStart)
+            document.removeEventListener("keyup", handlePressFinish)
+        }
+    }, [watchKey, pressed, setPressed, onStartPress, onFinishPress])
+
+    return pressed;
+}
+
+
+// helper functions 
+function fromEventCode(code: EventCode): KeyLabel{
+    const prefixRegex = /Key|Digit/gi
+    return code.replace(prefixRegex, "")
+}
+
+function equal(watchedKey: KeyLabel, eventCode: EventCode): boolean{
+    return (
+        fromEventCode(eventCode).toUpperCase() === 
+            watchedKey.toUpperCase()
+    )
+}
